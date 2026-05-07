@@ -1,94 +1,61 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>英作文 AI添削</title>
-  <style>
-    body { font-family: sans-serif; max-width: 680px; margin: 0 auto; padding: 1.5rem; background: #fafaf8; color: #1a1a1a; }
-    h1 { font-size: 18px; font-weight: 500; margin-bottom: 4px; }
-    .subtitle { font-size: 13px; color: #666; margin-bottom: 1.5rem; }
-    .card { background: white; border: 0.5px solid #ddd; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
-    .badge { background: #E6F1FB; color: #0C447C; font-size: 12px; padding: 2px 8px; border-radius: 20px; display: inline-block; margin-bottom: 8px; }
-    .jp { font-size: 14px; line-height: 1.6; margin-bottom: 6px; }
-    .hint { font-size: 12px; color: #888; margin-bottom: 10px; font-style: italic; }
-    textarea { width: 100%; font-size: 14px; padding: 8px 10px; border: 0.5px solid #ccc; border-radius: 8px; resize: vertical; min-height: 60px; font-family: sans-serif; box-sizing: border-box; }
-    button { margin-top: 8px; padding: 6px 16px; font-size: 13px; border: 0.5px solid #ccc; border-radius: 8px; background: transparent; cursor: pointer; }
-    button:hover { background: #f5f5f5; }
-    button:disabled { opacity: 0.5; cursor: default; }
-    .feedback { margin-top: 10px; padding: 10px 12px; border-radius: 8px; font-size: 13px; line-height: 1.7; white-space: pre-wrap; display: none; }
-    .feedback.show { display: block; }
-    .ok { background: #EAF3DE; border-left: 3px solid #639922; color: #27500A; }
-    .ng { background: #FCEBEB; border-left: 3px solid #E24B4A; color: #501313; }
-    .loading { background: #f5f5f5; border-left: 3px solid #ccc; color: #666; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>英作文 AI添削</title>
+<style>
+body{font-family:sans-serif;max-width:680px;margin:0 auto;padding:1.5rem;background:#fafaf8}
+h1{font-size:18px;font-weight:500;margin-bottom:4px}
+.sub{font-size:13px;color:#666;margin-bottom:1.5rem}
+.card{background:white;border:1px solid #ddd;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem}
+.badge{background:#E6F1FB;color:#0C447C;font-size:12px;padding:2px 8px;border-radius:20px;display:inline-block;margin-bottom:8px}
+.jp{font-size:14px;line-height:1.6;margin-bottom:6px}
+.hint{font-size:12px;color:#888;margin-bottom:10px;font-style:italic}
+textarea{width:100%;font-size:14px;padding:8px 10px;border:1px solid #ccc;border-radius:8px;resize:vertical;min-height:60px;box-sizing:border-box}
+button{margin-top:8px;padding:6px 16px;font-size:13px;border:1px solid #ccc;border-radius:8px;background:transparent;cursor:pointer}
+button:disabled{opacity:0.5}
+.fb{margin-top:10px;padding:10px 12px;border-radius:8px;font-size:13px;line-height:1.7;white-space:pre-wrap;display:none}
+.fb.show{display:block}
+.ok{background:#EAF3DE;border-left:3px solid #639922;color:#27500A}
+.ng{background:#FCEBEB;border-left:3px solid #E24B4A;color:#501313}
+.loading{background:#f5f5f5;border-left:3px solid #ccc;color:#666}
+</style>
 </head>
 <body>
-  <h1>英作文 AI添削</h1>
-  <p class="subtitle">英訳を入力して「添削する」を押してください。3Csの観点でフィードバックします。</p>
-  <div id="app"></div>
-
-  <script>
-    // ★ここはそのままでOKです★
-    const https://eigo-tensaku.futa-sugihara.workers.dev = "https://eigo-tensaku.futa-sugihara.workers.dev";
-
-    const questions = [
-      { num: 1, jp: "血液型は性格と何らかの関係があると信じている日本人が多い。", hint: "blood type(s) / have something to do with", source: "滋賀大" },
-      { num: 2, jp: "サンタクロースを見た人はいない。けれども，それはサンタクロースがいないという証明にはならない。", hint: "Santa Claus", source: "大阪薬科大" },
-      { num: 3, jp: "ハンカチで鼻をかむ日本人はほとんどいない。", hint: "handkerchief / blow one's nose", source: "関西学院大" },
-      { num: 4, jp: "日本では，毎年出生率が低下し子供の数が減っている。", hint: "the birthrate / the birth rate", source: "愛知大" },
-      { num: 5, jp: "近年，電子書籍の普及が急速に進んできた。", hint: "e-book / electronic book / digital book", source: "京都大" },
-    ];
-
-    const app = document.getElementById("app");
-
-    questions.forEach(q => {
-      app.innerHTML += `
-        <div class="card">
-          <span class="badge">(${q.num}) ${q.source}</span>
-          <p class="jp">${q.jp}</p>
-          <p class="hint">ヒント：${q.hint}</p>
-          <textarea id="ans-${q.num}" placeholder="ここに英訳を入力..."></textarea>
-          <br>
-          <button id="btn-${q.num}" onclick="check(${q.num})">添削する ↗</button>
-          <div class="feedback" id="fb-${q.num}"></div>
-        </div>`;
-    });
-
-    async function check(num) {
-      const q = questions[num - 1];
-      const answer = document.getElementById(`ans-${num}`).value.trim();
-      const btn = document.getElementById(`btn-${num}`);
-      const fb = document.getElementById(`fb-${num}`);
-
-      if (!answer) {
-        fb.className = "feedback ng show";
-        fb.textContent = "英訳を入力してから「添削する」を押してください。";
-        return;
-      }
-
-      btn.disabled = true;
-      btn.textContent = "添削中...";
-      fb.className = "feedback loading show";
-      fb.textContent = "AIが添削しています...";
-
-      try {
-        const res = await fetch(https://eigo-tensaku.futa-sugihara.workers.dev, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ japaneseText: q.jp, studentAnswer: answer }),
-        });
-        const data = await res.json();
-        fb.className = "feedback ok show";
-        fb.textContent = data.result;
-      } catch (e) {
-        fb.className = "feedback ng show";
-        fb.textContent = "エラーが発生しました。もう一度試してください。";
-      }
-
-      btn.disabled = false;
-      btn.textContent = "添削する ↗";
-    }
-  </script>
+<h1>英作文 AI添削</h1>
+<p class="sub">英訳を入力して「添削する」を押してください。3Csの観点でフィードバックします。</p>
+<div id="app"></div>
+<script>
+var WORKER_URL="https://eigo-tensaku.futa-sugihara.workers.dev";
+var questions=[
+{num:1,jp:"血液型は性格と何らかの関係があると信じている日本人が多い。",hint:"blood type(s) / have something to do with",source:"滋賀大"},
+{num:2,jp:"サンタクロースを見た人はいない。けれども，それはサンタクロースがいないという証明にはならない。",hint:"Santa Claus",source:"大阪薬科大"},
+{num:3,jp:"ハンカチで鼻をかむ日本人はほとんどいない。",hint:"handkerchief / blow one's nose",source:"関西学院大"},
+{num:4,jp:"日本では，毎年出生率が低下し子供の数が減っている。",hint:"the birthrate / the birth rate",source:"愛知大"},
+{num:5,jp:"近年，電子書籍の普及が急速に進んできた。",hint:"e-book / electronic book / digital book",source:"京都大"}
+];
+var app=document.getElementById("app");
+questions.forEach(function(q){
+var d=document.createElement("div");
+d.className="card";
+d.innerHTML='<span class="badge">('+q.num+') '+q.source+'</span><p class="jp">'+q.jp+'</p><p class="hint">ヒント：'+q.hint+'</p><textarea id="a'+q.num+'" placeholder="ここに英訳を入力..."></textarea><br><button id="b'+q.num+'" onclick="check('+q.num+')">添削する</button><div class="fb" id="f'+q.num+'"></div>';
+app.appendChild(d);
+});
+function check(num){
+var q=questions[num-1];
+var answer=document.getElementById("a"+num).value.trim();
+var btn=document.getElementById("b"+num);
+var fb=document.getElementById("f"+num);
+if(!answer){fb.className="fb ng show";fb.textContent="英訳を入力してください。";return;}
+btn.disabled=true;btn.textContent="添削中...";
+fb.className="fb loading show";fb.textContent="AIが添削しています...";
+fetch(WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({japaneseText:q.jp,studentAnswer:answer})})
+.then(function(r){return r.json();})
+.then(function(data){fb.className="fb ok show";fb.textContent=data.result;})
+.catch(function(){fb.className="fb ng show";fb.textContent="エラーが発生しました。もう一度試してください。";});
+btn.disabled=false;btn.textContent="添削する";
+}
+</script>
 </body>
 </html>
